@@ -263,16 +263,10 @@ export default function Page() {
               <span style={{ fontSize:13, color:'var(--soft)', fontWeight:500 }}>Axon AI</span>
             </div>
           </div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => setShowMemory(true)}
-              style={{ background:'var(--surface)', border:`1px solid ${moodInfo.color}40`, borderRadius:8, padding:'5px 11px', color: moodInfo.color, fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer', transition:'all 0.4s ease' }}>
-              🧠 {memory.length > 0 ? `${memory.length} memories` : 'Memory'}
-            </button>
-            <button onClick={newChat}
-              style={{ background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:8, padding:'5px 11px', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
-              + New
-            </button>
-          </div>
+          <button onClick={newChat}
+            style={{ background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:8, padding:'5px 11px', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+            + New
+          </button>
         </div>
 
         <div style={{ flex:1, overflowY:'auto', padding:'16px 14px 8px', display:'flex', flexDirection:'column', gap:3 }}>
