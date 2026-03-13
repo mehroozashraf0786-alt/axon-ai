@@ -130,7 +130,6 @@ export default function Page() {
 
   const newChat = () => { setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral'); };
   const load = (s) => { setSid(s.id); setMsgs(s.messages); setSidebarOpen(false); };
-
   const moodInfo = MOODS[currentMood] || MOODS.neutral;
 
   return (
@@ -156,7 +155,7 @@ export default function Page() {
 
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 9px 18px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-            <div style={{ width:32, height:32, background:`linear-gradient(135deg,${moodInfo.color},${moodInfo.color}88)`, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:`0 0 16px ${moodInfo.color}40`, flexShrink:0, transition:'background 0.5s ease' }}>
+            <div style={{ width:32, height:32, background:`linear-gradient(135deg,${moodInfo.color},${moodInfo.color}88)`, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background 0.5s ease' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </div>
             <span style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, letterSpacing:'-0.4px' }}>Ax<span style={{ color: moodInfo.color, transition:'color 0.5s ease' }}>on</span></span>
@@ -166,7 +165,7 @@ export default function Page() {
         </div>
 
         <button onClick={newChat}
-          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 10px', borderRadius:8, border:'1px dashed var(--border2)', background:'none', color:'var(--muted)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', marginBottom:4 }}>
+          style={{ display:'flex', alignItems: 'center', gap:8, padding:'9px 10px', borderRadius:8, border:'1px dashed var(--border2)', background:'none', color:'var(--muted)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', marginBottom:4 }}>
           + New conversation
         </button>
 
@@ -194,8 +193,6 @@ export default function Page() {
 
       {/* MAIN */}
       <main style={{ flex:1, display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
-
-        {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <button onClick={() => setSidebarOpen(true)}
@@ -210,12 +207,11 @@ export default function Page() {
             </div>
           </div>
           <button onClick={newChat}
-            style={{ background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:8, padding:'6px 12px', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+            style={{ background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:8, padding:'5px 11px', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
             + New
           </button>
         </div>
 
-        {/* Messages */}
         <div style={{ flex:1, overflowY:'auto', padding:'16px 14px 8px', display:'flex', flexDirection:'column', gap:3 }}>
           {msgs.length === 0 && !busy && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', gap:16, padding:'20px 10px', animation:'fadeUp .5s ease both' }}>
@@ -227,7 +223,7 @@ export default function Page() {
                   Meet <span style={{ color: moodInfo.color, transition:'color 0.5s ease' }}>Axon</span>
                 </h1>
                 <p style={{ fontSize:14, color:'var(--soft)', maxWidth:300, lineHeight:1.7 }}>
-                  Your AI assistant. Ask anything — coding, writing, research, math, and more.
+                  Your AI assistant that adapts to you — technical, creative, casual or supportive based on what you need.
                 </p>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%', maxWidth:440 }}>
@@ -251,14 +247,13 @@ export default function Page() {
               <div style={{ width:28, height:28, borderRadius:7, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, marginTop:3,
                 background:`linear-gradient(135deg,${moodInfo.color},${moodInfo.color}88)`, color:'#fff', fontFamily:'Syne,sans-serif', transition:'background 0.5s ease' }}>A</div>
               <div style={{ padding:'12px 14px', borderRadius:13, background:'var(--surface)', border:'1px solid var(--border)', borderTopLeftRadius:3, display:'flex', gap:5, alignItems:'center' }}>
-                {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, background: moodInfo.color, borderRadius:'50%', animation:`dot 1.2s ease-in-out ${i*.2}s infinite`, transition:'background 0.5s ease' }}/>)}
+                {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, background: moodInfo.color, borderRadius:'50%', animation:`dot 1.2s ease-in-out ${i*.2}s infinite` }}/>)}
               </div>
             </div>
           )}
           <div ref={endRef}/>
         </div>
 
-        {/* Input */}
         <div style={{ padding:'10px 14px 16px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ background:'var(--surface)', border:`1px solid ${moodInfo.color}35`, borderRadius:12, display:'flex', alignItems:'flex-end', padding:'3px 3px 3px 13px', transition:'border-color 0.5s ease' }}>
             <textarea ref={taRef} value={input} rows={1} placeholder="Ask Axon anything…"
