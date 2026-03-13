@@ -1,6 +1,6 @@
 export async function POST(req) {
   try {
-    const { messages, memory } = await req.json();
+    const { messages, memory, speedInstruction } = await req.json();
 
     const key = process.env.CEREBRAS_API_KEY;
     if (!key) {
@@ -48,7 +48,9 @@ MEMORY — proactively extract anything useful from EVERY message:
 
 EMOTION: Start every response with: [MOOD:happy] or [MOOD:thinking] or [MOOD:excited] or [MOOD:empathetic] or [MOOD:curious] or [MOOD:cool]
 
-RULES:
+${speedInstruction ? speedInstruction + "
+
+" : ""}RULES:
 - Keep casual replies short and natural
 - Never mention "large language model", "parameters", "knowledge base"
 - Never say "Certainly!", "Absolutely!", "Of course!", "Great question!"
