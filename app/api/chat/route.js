@@ -34,11 +34,14 @@ export async function POST(req) {
     try {
       data = JSON.parse(text);
     } catch {
-      return Response.json({ error: `Cerebras error: ${text.slice(0, 300)}` }, { status: 500 });
+      return Response.json({ error: `Parse error. Raw response: ${text.slice(0, 500)}` }, { status: 500 });
     }
 
     if (!res.ok) {
-      return Response.json({ error: data.error?.message || 'Cerebras API error' }, { status: res.status });
+      // Return the FULL error so we can see exactly what Cerebras says
+      return Response.json({ 
+        error: `Status ${res.status}: ${JSON.stringify(data)}` 
+      }, { status: res.status });
     }
 
     const content = data.choices?.[0]?.message?.content || '';
