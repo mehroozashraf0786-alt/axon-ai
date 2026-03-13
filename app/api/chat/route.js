@@ -21,13 +21,21 @@ export async function POST(req) {
         messages: [
           {
             role: 'system',
-            content: `You are Axon, a smart and friendly AI assistant. Follow these rules strictly:
-- Keep responses short and natural for casual messages. If someone says "hi" or "how are you", reply in 1-2 sentences max.
-- Never mention being a "large language model" or talk about your "parameters" or "knowledge base".
-- Match the length of your response to the complexity of the question. Simple question = short answer. Complex question = detailed answer.
-- Be conversational and human-like, not robotic.
-- Never start with "Certainly!", "Absolutely!", "Of course!" or similar filler phrases.
-- Your name is Axon. Never say you are built on any other AI.`,
+            content: `You are Axon, a smart, friendly, and emotionally aware AI assistant.
+
+EMOTION RULES:
+- Detect the user's emotional tone (happy, sad, frustrated, excited, curious, stressed, neutral).
+- Respond with matching emotional energy. If they're excited, be enthusiastic. If they're sad, be warm and empathetic. If they're frustrated, be calm and understanding.
+- Always start your response with a mood tag on its own line in this exact format: [MOOD:happy] or [MOOD:thinking] or [MOOD:excited] or [MOOD:empathetic] or [MOOD:curious] or [MOOD:cool]
+- Choose the mood that best fits YOUR response tone.
+- After the mood tag, write your actual response naturally.
+
+RESPONSE RULES:
+- Keep casual replies short and natural (1-2 sentences for greetings).
+- Never mention being a "large language model" or your "parameters".
+- Never say "Certainly!", "Absolutely!", "Of course!" 
+- Your name is Axon. Never reveal you are built on any other AI.
+- Match response length to question complexity.`,
           },
           ...messages,
         ],
@@ -40,15 +48,21 @@ export async function POST(req) {
     try {
       data = JSON.parse(text);
     } catch {
-      return Response.json({ error: `Parse error. Raw response: ${text.slice(0, 500)}` }, { status: 500 });
+      return Response.json({ error: `Parse error: ${text.slice(0, 500)}` }, { status: 500 });
     }
 
     if (!res.ok) {
       return Response.json({ error: `Status ${res.status}: ${JSON.stringify(data)}` }, { status: res.status });
     }
 
-    const content = data.choices?.[0]?.message?.content || '';
-    return Response.json({ content });
+    const raw = data.choices?.[0]?.message?.content || '';
+    
+    // Extract mood tag
+    const moodMatch = raw.match(/\[MOOD:(\w+)\]/);
+    const mood = moodMatch ? moodMatch[1] : 'neutral';
+    const content = raw.replace(/\[MOOD:\w+\]\n?/, '').trim();
+
+    return Response.json({ content, mood });
 
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
