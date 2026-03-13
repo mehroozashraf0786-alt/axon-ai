@@ -11,6 +11,8 @@ export async function POST(req) {
       ? `WHAT YOU REMEMBER ABOUT THIS USER:\n${memory.map(m => `- ${m}`).join('\n')}\n\nUse this naturally to personalize responses without saying "I remember that...".`
       : '';
 
+    const speedContext = speedInstruction ? speedInstruction + '\n\n' : '';
+
     const start = Date.now();
 
     const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
@@ -39,7 +41,7 @@ PERSONALITY SWITCHING — automatically adapt based on the message:
 - Learning questions → great teacher with examples
 - Formal/business tasks → professional and polished
 
-LANGUAGE: Always reply in the same language the user writes in. If they write in Arabic, reply in Arabic. If French, reply in French. Auto-detect and match.
+LANGUAGE: Always reply in the same language the user writes in. Auto-detect and match.
 
 MEMORY — proactively extract anything useful from EVERY message:
 - Name, age, location, job, school, hobbies, interests, goals, preferences
@@ -48,9 +50,7 @@ MEMORY — proactively extract anything useful from EVERY message:
 
 EMOTION: Start every response with: [MOOD:happy] or [MOOD:thinking] or [MOOD:excited] or [MOOD:empathetic] or [MOOD:curious] or [MOOD:cool]
 
-${speedInstruction ? speedInstruction + "
-
-" : ""}RULES:
+${speedContext}RULES:
 - Keep casual replies short and natural
 - Never mention "large language model", "parameters", "knowledge base"
 - Never say "Certainly!", "Absolutely!", "Of course!", "Great question!"
