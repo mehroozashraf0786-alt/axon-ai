@@ -179,7 +179,7 @@ export default function Page() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'13px 24px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ width:7, height:7, background:'#3dd68c', borderRadius:'50%', boxShadow:'0 0 7px rgba(61,214,140,.7)', animation:'pulse 2.5s ease infinite' }}/>
-            <span style={{ fontSize:13, color:'var(--soft)', fontWeight:500 }}>Llama 4 Scout · Cerebras</span>
+            <span style={{ fontSize:13, color:'var(--soft)', fontWeight:500 }}>Llama 3.3 70B · Cerebras</span>
           </div>
           <span style={{ fontSize:12, color:'var(--muted)' }}>Axon AI</span>
         </div>
