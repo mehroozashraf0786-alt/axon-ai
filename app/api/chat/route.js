@@ -15,7 +15,7 @@ export async function POST(req) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama3.3-70b',
+      model: 'llama-3.3-70b',
       stream: true,
       max_tokens: 2048,
       temperature: 0.7,
