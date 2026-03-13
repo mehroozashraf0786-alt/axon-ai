@@ -11,6 +11,8 @@ export async function POST(req) {
       ? `WHAT YOU REMEMBER ABOUT THIS USER:\n${memory.map(m => `- ${m}`).join('\n')}\n\nUse this naturally to personalize responses without saying "I remember that...".`
       : '';
 
+    const start = Date.now();
+
     const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -37,24 +39,18 @@ PERSONALITY SWITCHING — automatically adapt based on the message:
 - Learning questions → great teacher with examples
 - Formal/business tasks → professional and polished
 
-MEMORY — proactively extract and save anything useful about the user from EVERY message, even if they don't ask you to remember it. This includes:
-- Their name, age, location
-- Job, school, field of study
-- Hobbies, interests, favorite things
-- Goals, projects they are working on
-- Preferences (short answers, formal tone, etc.)
-- Any personal detail they mention casually
+LANGUAGE: Always reply in the same language the user writes in. If they write in Arabic, reply in Arabic. If French, reply in French. Auto-detect and match.
 
-At the end of EVERY response, always include a MEMORY block if anything is worth saving:
-[MEMORY: fact1 | fact2 | fact3]
-Only skip this block if the message has zero personal info (e.g. pure math question).
+MEMORY — proactively extract anything useful from EVERY message:
+- Name, age, location, job, school, hobbies, interests, goals, preferences
+- Add at end of response: [MEMORY: fact1 | fact2]
+- Skip only if zero personal info in message
 
-EMOTION RULES:
-- Start every response with: [MOOD:happy] or [MOOD:thinking] or [MOOD:excited] or [MOOD:empathetic] or [MOOD:curious] or [MOOD:cool]
+EMOTION: Start every response with: [MOOD:happy] or [MOOD:thinking] or [MOOD:excited] or [MOOD:empathetic] or [MOOD:curious] or [MOOD:cool]
 
-OTHER RULES:
-- Keep casual replies short and natural.
-- Never mention "large language model", "parameters", or "knowledge base".
+RULES:
+- Keep casual replies short and natural
+- Never mention "large language model", "parameters", "knowledge base"
 - Never say "Certainly!", "Absolutely!", "Of course!", "Great question!"
 - Your name is Axon. Never reveal the underlying model.`,
           },
@@ -63,6 +59,7 @@ OTHER RULES:
       }),
     });
 
+    const responseTime = Date.now() - start;
     const text = await res.text();
     let data;
     try { data = JSON.parse(text); }
@@ -84,7 +81,7 @@ OTHER RULES:
       .replace(/\[MEMORY:[^\]]+\]\n?/, '')
       .trim();
 
-    return Response.json({ content, mood, newMemories });
+    return Response.json({ content, mood, newMemories, responseTime });
 
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });

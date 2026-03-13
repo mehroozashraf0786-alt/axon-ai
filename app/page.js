@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 const SUGGESTIONS = [
   { icon: '⚡', title: 'Explain a concept', prompt: 'Explain how neural networks work in simple terms' },
@@ -18,7 +18,21 @@ const MOODS = {
   neutral:    { color: '#5b8dee' },
 };
 
-function Bubble({ role, content, mood }) {
+function CopyBtn({ text, color }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={copy} title="Copy" style={{ background:'none', border:'none', cursor:'pointer', color: copied ? color : 'var(--muted)', fontSize:12, padding:'4px 6px', borderRadius:6, transition:'color 0.2s', display:'flex', alignItems:'center', gap:4 }}>
+      {copied ? '✓ Copied' : '⎘ Copy'}
+    </button>
+  );
+}
+
+function Bubble({ role, content, mood, responseTime, onSpeak, speaking }) {
   const isAxon = role === 'assistant';
   const moodInfo = MOODS[mood] || MOODS.neutral;
   const parts = [];
@@ -48,14 +62,30 @@ function Bubble({ role, content, mood }) {
           : { background:'var(--surface2)', color:'var(--soft)', border:'1px solid var(--border2)' }) }}>
         {isAxon ? 'A' : 'U'}
       </div>
-      <div style={{ maxWidth:'85%', padding:'11px 14px', borderRadius:13, fontSize:14.5, lineHeight:1.78,
-        ...(isAxon
-          ? { background:'var(--surface)', border:`1px solid ${moodInfo.color}25`, borderTopLeftRadius:3, transition:'border-color 0.5s ease' }
-          : { background:'var(--user)', border:'1px solid rgba(91,141,238,0.18)', borderTopRightRadius:3 }) }}>
-        {parts.map((p, i) =>
-          p.t === 'code'
-            ? <pre key={i} style={{ background:'#0d1117', border:'1px solid var(--border2)', borderRadius:8, padding:'12px 14px', overflowX:'auto', margin:'8px 0', fontSize:12, fontFamily:"'Fira Code',monospace" }}><code style={{ color:'#c9d1d9' }}>{p.v}</code></pre>
-            : <span key={i}>{renderText(p.v)}</span>
+      <div style={{ maxWidth:'85%', display:'flex', flexDirection:'column', gap:4 }}>
+        <div style={{ padding:'11px 14px', borderRadius:13, fontSize:14.5, lineHeight:1.78,
+          ...(isAxon
+            ? { background:'var(--surface)', border:`1px solid ${moodInfo.color}25`, borderTopLeftRadius:3, transition:'border-color 0.5s ease' }
+            : { background:'var(--user)', border:'1px solid rgba(91,141,238,0.18)', borderTopRightRadius:3 }) }}>
+          {parts.map((p, i) =>
+            p.t === 'code'
+              ? <pre key={i} style={{ background:'#0d1117', border:'1px solid var(--border2)', borderRadius:8, padding:'12px 14px', overflowX:'auto', margin:'8px 0', fontSize:12, fontFamily:"'Fira Code',monospace" }}><code style={{ color:'#c9d1d9' }}>{p.v}</code></pre>
+              : <span key={i}>{renderText(p.v)}</span>
+          )}
+        </div>
+        {isAxon && (
+          <div style={{ display:'flex', alignItems:'center', gap:4, paddingLeft:4 }}>
+            <CopyBtn text={content} color={moodInfo.color} />
+            <button onClick={() => onSpeak(content)} title={speaking ? 'Stop' : 'Read aloud'}
+              style={{ background:'none', border:'none', cursor:'pointer', color: speaking ? moodInfo.color : 'var(--muted)', fontSize:12, padding:'4px 6px', borderRadius:6, transition:'color 0.2s' }}>
+              {speaking ? '⏹ Stop' : '🔊 Listen'}
+            </button>
+            {responseTime && (
+              <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto', paddingRight:2 }}>
+                {responseTime < 1000 ? `${responseTime}ms` : `${(responseTime/1000).toFixed(1)}s`}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -104,8 +134,11 @@ export default function Page() {
   const [currentMood, setCurrentMood] = useState('neutral');
   const [memory, setMemory] = useState([]);
   const [showMemory, setShowMemory] = useState(false);
+  const [speakingIdx, setSpeakingIdx] = useState(null);
+  const [listening, setListening] = useState(false);
   const endRef = useRef(null);
   const taRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     const s = localStorage.getItem('axon_s');
@@ -115,6 +148,59 @@ export default function Page() {
   }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs, busy]);
+
+  // Voice input setup
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.onresult = (e) => {
+        const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+        setInput(transcript);
+        if (taRef.current) {
+          taRef.current.style.height = 'auto';
+          taRef.current.style.height = Math.min(taRef.current.scrollHeight, 120) + 'px';
+        }
+      };
+      rec.onend = () => setListening(false);
+      rec.onerror = () => setListening(false);
+      recognitionRef.current = rec;
+    }
+  }, []);
+
+  const toggleVoice = () => {
+    if (!recognitionRef.current) return alert('Voice input not supported in this browser.');
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      recognitionRef.current.start();
+      setListening(true);
+    }
+  };
+
+  const speak = useCallback((text, idx) => {
+    window.speechSynthesis.cancel();
+    if (speakingIdx === idx) { setSpeakingIdx(null); return; }
+    const clean = text.replace(/[#*`]/g, '').replace(/<[^>]+>/g, '');
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.onend = () => setSpeakingIdx(null);
+    utt.onerror = () => setSpeakingIdx(null);
+    setSpeakingIdx(idx);
+    window.speechSynthesis.speak(utt);
+  }, [speakingIdx]);
+
+  const exportChat = () => {
+    if (msgs.length === 0) return;
+    const text = msgs.map(m => `${m.role === 'user' ? 'You' : 'Axon'}: ${m.content}`).join('\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'axon-chat.txt'; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const resize = () => {
     const t = taRef.current;
@@ -129,10 +215,7 @@ export default function Page() {
   };
 
   const clearMemory = () => {
-    if (confirm("Clear all of Axon's memories about you?")) {
-      saveMemory([]);
-      setShowMemory(false);
-    }
+    if (confirm("Clear all of Axon's memories?")) { saveMemory([]); setShowMemory(false); }
   };
 
   const send = async (text) => {
@@ -141,6 +224,8 @@ export default function Page() {
     setInput('');
     if (taRef.current) taRef.current.style.height = 'auto';
     setSidebarOpen(false);
+    window.speechSynthesis.cancel();
+    setSpeakingIdx(null);
 
     const history = [...msgs, { role:'user', content:msg }];
     setMsgs(history);
@@ -168,7 +253,7 @@ export default function Page() {
         saveMemory(updated.slice(-50));
       }
 
-      const final = [...history, { role:'assistant', content: data.content, mood }];
+      const final = [...history, { role:'assistant', content: data.content, mood, responseTime: data.responseTime }];
       setMsgs(final);
 
       const id = sid || Date.now().toString();
@@ -184,7 +269,10 @@ export default function Page() {
     setBusy(false);
   };
 
-  const newChat = () => { setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral'); };
+  const newChat = () => {
+    setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral');
+    window.speechSynthesis.cancel(); setSpeakingIdx(null);
+  };
   const load = (s) => { setSid(s.id); setMsgs(s.messages); setSidebarOpen(false); };
   const moodInfo = MOODS[currentMood] || MOODS.neutral;
 
@@ -195,6 +283,7 @@ export default function Page() {
         @keyframes slideUp { from{opacity:0;transform:translateY(40px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes dot { 0%,80%,100%{transform:scale(.6);opacity:.3} 40%{transform:scale(1);opacity:1} }
+        @keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
         textarea::placeholder { color: var(--muted); }
       `}</style>
 
@@ -241,6 +330,10 @@ export default function Page() {
             <span>🧠 Memory</span>
             {memory.length > 0 && <span style={{ fontSize:11, background: moodInfo.color, color:'#fff', borderRadius:10, padding:'1px 7px' }}>{memory.length}</span>}
           </button>
+          <button onClick={exportChat}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, background:'none', border:'none', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', width:'100%' }}>
+            📝 Export chat
+          </button>
           <button onClick={() => { if(confirm('Delete all history?')){ setSessions([]); localStorage.removeItem('axon_s'); newChat(); }}}
             style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, background:'none', border:'none', color:'var(--muted)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', width:'100%' }}>
             🗑 Clear history
@@ -280,7 +373,7 @@ export default function Page() {
                   Meet <span style={{ color: moodInfo.color, transition:'color 0.5s ease' }}>Axon</span>
                 </h1>
                 <p style={{ fontSize:14, color:'var(--soft)', maxWidth:300, lineHeight:1.7 }}>
-                  Your AI assistant with memory. Tell me your name, interests or preferences and I'll remember them! 🧠
+                  Your AI assistant with memory, voice, and multilingual support.
                 </p>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%', maxWidth:440 }}>
@@ -297,7 +390,12 @@ export default function Page() {
             </div>
           )}
 
-          {msgs.map((m,i) => <Bubble key={i} role={m.role} content={m.content} mood={m.mood} />)}
+          {msgs.map((m,i) => (
+            <Bubble key={i} role={m.role} content={m.content} mood={m.mood}
+              responseTime={m.responseTime}
+              onSpeak={(text) => speak(text, i)}
+              speaking={speakingIdx === i} />
+          ))}
 
           {busy && (
             <div style={{ display:'flex', gap:10, padding:'4px 0' }}>
@@ -311,9 +409,18 @@ export default function Page() {
           <div ref={endRef}/>
         </div>
 
+        {/* Input */}
         <div style={{ padding:'10px 14px 16px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ background:'var(--surface)', border:`1px solid ${moodInfo.color}35`, borderRadius:12, display:'flex', alignItems:'flex-end', padding:'3px 3px 3px 13px', transition:'border-color 0.5s ease' }}>
-            <textarea ref={taRef} value={input} rows={1} placeholder="Ask Axon anything…"
+            {/* Voice button */}
+            <button onClick={toggleVoice} title="Voice input"
+              style={{ width:32, height:32, borderRadius:8, background: listening ? 'rgba(239,68,68,0.15)' : 'none', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color: listening ? '#ef4444' : 'var(--muted)', flexShrink:0, marginRight:4, transition:'all 0.2s', animation: listening ? 'micPulse 1.5s ease infinite' : 'none' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <textarea ref={taRef} value={input} rows={1} placeholder={listening ? '🎤 Listening…' : 'Ask Axon anything…'}
               onChange={e=>{ setInput(e.target.value); resize(); }}
               onKeyDown={e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } }}
               style={{ flex:1, background:'none', border:'none', outline:'none', fontFamily:'DM Sans,sans-serif', fontSize:15, color:'var(--text)', lineHeight:1.6, resize:'none', maxHeight:120, minHeight:40, padding:'8px 0', overflowY:'auto' }}
