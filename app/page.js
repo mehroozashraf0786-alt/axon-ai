@@ -62,6 +62,38 @@ function Bubble({ role, content, mood }) {
   );
 }
 
+function MemoryPanel({ memory, onClear, onClose, moodColor }) {
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:60, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.6)' }}/>
+      <div style={{ position:'relative', width:'100%', maxWidth:480, background:'var(--surface)', borderRadius:'20px 20px 0 0', padding:'24px 20px 32px', border:'1px solid var(--border)', animation:'slideUp .3s ease both', maxHeight:'70vh', display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <div>
+            <div style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:800 }}>🧠 Axon Memory</div>
+            <div style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>What Axon remembers about you</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:22 }}>×</button>
+        </div>
+        <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:8 }}>
+          {memory.length === 0
+            ? <div style={{ fontSize:13, color:'var(--muted)', textAlign:'center', padding:'20px 0' }}>Nothing remembered yet. Chat with Axon and it will start learning about you!</div>
+            : memory.map((m, i) => (
+                <div key={i} style={{ background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:10, padding:'10px 13px', fontSize:13, color:'var(--text)', display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ color: moodColor }}>•</span> {m}
+                </div>
+              ))
+          }
+        </div>
+        {memory.length > 0 && (
+          <button onClick={onClear} style={{ marginTop:16, padding:'10px', borderRadius:10, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
+            🗑 Clear all memories
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState('');
@@ -70,12 +102,16 @@ export default function Page() {
   const [sid, setSid] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentMood, setCurrentMood] = useState('neutral');
+  const [memory, setMemory] = useState([]);
+  const [showMemory, setShowMemory] = useState(false);
   const endRef = useRef(null);
   const taRef = useRef(null);
 
   useEffect(() => {
     const s = localStorage.getItem('axon_s');
     if (s) setSessions(JSON.parse(s));
+    const m = localStorage.getItem('axon_memory');
+    if (m) setMemory(JSON.parse(m));
   }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs, busy]);
@@ -85,6 +121,18 @@ export default function Page() {
     if (!t) return;
     t.style.height = 'auto';
     t.style.height = Math.min(t.scrollHeight, 120) + 'px';
+  };
+
+  const saveMemory = (newMem) => {
+    setMemory(newMem);
+    localStorage.setItem('axon_memory', JSON.stringify(newMem));
+  };
+
+  const clearMemory = () => {
+    if (confirm("Clear all of Axon's memories about you?")) {
+      saveMemory([]);
+      setShowMemory(false);
+    }
   };
 
   const send = async (text) => {
@@ -103,7 +151,7 @@ export default function Page() {
       const res = await fetch('/api/chat', {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, memory }),
       });
 
       const data = await res.json();
@@ -111,6 +159,14 @@ export default function Page() {
 
       const mood = data.mood || 'neutral';
       setCurrentMood(mood);
+
+      if (data.newMemories && data.newMemories.length > 0) {
+        const updated = [...memory];
+        data.newMemories.forEach(nm => {
+          if (!updated.some(m => m.toLowerCase() === nm.toLowerCase())) updated.push(nm);
+        });
+        saveMemory(updated.slice(-50));
+      }
 
       const final = [...history, { role:'assistant', content: data.content, mood }];
       setMsgs(final);
@@ -136,22 +192,20 @@ export default function Page() {
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', position:'relative' }}>
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(40px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes dot { 0%,80%,100%{transform:scale(.6);opacity:.3} 40%{transform:scale(1);opacity:1} }
         textarea::placeholder { color: var(--muted); }
       `}</style>
 
-      {sidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)}
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:40 }}/>
-      )}
+      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:40 }}/>}
+      {showMemory && <MemoryPanel memory={memory} onClear={clearMemory} onClose={() => setShowMemory(false)} moodColor={moodInfo.color} />}
 
       {/* SIDEBAR */}
       <aside style={{ position:'fixed', top:0, left:0, height:'100vh', zIndex:50, width:260,
         background:'var(--surface)', borderRight:'1px solid var(--border)',
         display:'flex', flexDirection:'column', padding:'18px 13px', gap:5, overflow:'hidden',
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition:'transform 0.25s ease' }}>
+        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)', transition:'transform 0.25s ease' }}>
 
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 9px 18px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>
@@ -160,12 +214,10 @@ export default function Page() {
             </div>
             <span style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, letterSpacing:'-0.4px' }}>Ax<span style={{ color: moodInfo.color, transition:'color 0.5s ease' }}>on</span></span>
           </div>
-          <button onClick={() => setSidebarOpen(false)}
-            style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:20, padding:'2px 6px' }}>×</button>
+          <button onClick={() => setSidebarOpen(false)} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:20, padding:'2px 6px' }}>×</button>
         </div>
 
-        <button onClick={newChat}
-          style={{ display:'flex', alignItems: 'center', gap:8, padding:'9px 10px', borderRadius:8, border:'1px dashed var(--border2)', background:'none', color:'var(--muted)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', marginBottom:4 }}>
+        <button onClick={newChat} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 10px', borderRadius:8, border:'1px dashed var(--border2)', background:'none', color:'var(--muted)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', marginBottom:4 }}>
           + New conversation
         </button>
 
@@ -183,7 +235,12 @@ export default function Page() {
           ))}
         </div>
 
-        <div style={{ borderTop:'1px solid var(--border)', paddingTop:9 }}>
+        <div style={{ borderTop:'1px solid var(--border)', paddingTop:9, display:'flex', flexDirection:'column', gap:2 }}>
+          <button onClick={() => { setSidebarOpen(false); setShowMemory(true); }}
+            style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:8, background:'none', border:'none', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', width:'100%' }}>
+            <span>🧠 Memory</span>
+            {memory.length > 0 && <span style={{ fontSize:11, background: moodInfo.color, color:'#fff', borderRadius:10, padding:'1px 7px' }}>{memory.length}</span>}
+          </button>
           <button onClick={() => { if(confirm('Delete all history?')){ setSessions([]); localStorage.removeItem('axon_s'); newChat(); }}}
             style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, background:'none', border:'none', color:'var(--muted)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', width:'100%' }}>
             🗑 Clear history
@@ -206,10 +263,16 @@ export default function Page() {
               <span style={{ fontSize:13, color:'var(--soft)', fontWeight:500 }}>Axon AI</span>
             </div>
           </div>
-          <button onClick={newChat}
-            style={{ background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:8, padding:'5px 11px', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
-            + New
-          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={() => setShowMemory(true)}
+              style={{ background:'var(--surface)', border:`1px solid ${moodInfo.color}40`, borderRadius:8, padding:'5px 11px', color: moodInfo.color, fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer', transition:'all 0.4s ease' }}>
+              🧠 {memory.length > 0 ? `${memory.length} memories` : 'Memory'}
+            </button>
+            <button onClick={newChat}
+              style={{ background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:8, padding:'5px 11px', color:'var(--soft)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+              + New
+            </button>
+          </div>
         </div>
 
         <div style={{ flex:1, overflowY:'auto', padding:'16px 14px 8px', display:'flex', flexDirection:'column', gap:3 }}>
@@ -223,7 +286,7 @@ export default function Page() {
                   Meet <span style={{ color: moodInfo.color, transition:'color 0.5s ease' }}>Axon</span>
                 </h1>
                 <p style={{ fontSize:14, color:'var(--soft)', maxWidth:300, lineHeight:1.7 }}>
-                  Your AI assistant that adapts to you — technical, creative, casual or supportive based on what you need.
+                  Your AI assistant with memory. Tell me your name, interests or preferences and I'll remember them! 🧠
                 </p>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%', maxWidth:440 }}>
