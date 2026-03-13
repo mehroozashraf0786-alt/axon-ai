@@ -8,7 +8,7 @@ const SUGGESTIONS = [
   { icon: '💻', title: 'Write code', prompt: 'Write a Python script to sort a list of dictionaries by a key' },
 ];
 
-function Bubble({ role, content, streaming }) {
+function Bubble({ role, content }) {
   const isAxon = role === 'assistant';
   const parts = [];
   const re = /```(\w*)\n?([\s\S]*?)```/g;
@@ -31,13 +31,11 @@ function Bubble({ role, content, streaming }) {
 
   return (
     <div style={{ display:'flex', gap:10, padding:'4px 0', flexDirection: isAxon ? 'row' : 'row-reverse', animation:'fadeUp .25s ease both' }}>
-      {/* Avatar */}
       <div style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, marginTop:3,
         ...(isAxon ? { background:'linear-gradient(135deg,#5b8dee,#8bb4ff)', color:'#fff', fontFamily:'Syne,sans-serif', boxShadow:'0 0 12px var(--glow)' }
                    : { background:'var(--surface2)', color:'var(--soft)', border:'1px solid var(--border2)' }) }}>
         {isAxon ? 'A' : 'U'}
       </div>
-      {/* Bubble */}
       <div style={{ maxWidth:680, padding:'11px 15px', borderRadius:14, fontSize:14.5, lineHeight:1.78,
         ...(isAxon ? { background:'var(--surface)', border:'1px solid var(--border)', borderTopLeftRadius:3 }
                    : { background:'var(--user)', border:'1px solid rgba(91,141,238,0.18)', borderTopRightRadius:3 }) }}>
@@ -46,9 +44,23 @@ function Bubble({ role, content, streaming }) {
             ? <pre key={i} style={{ background:'#0d1117', border:'1px solid var(--border2)', borderRadius:8, padding:'12px 15px', overflowX:'auto', margin:'8px 0', fontSize:13, fontFamily:"'Fira Code',monospace" }}><code style={{ color:'#c9d1d9' }}>{p.v}</code></pre>
             : <span key={i}>{renderText(p.v)}</span>
         )}
-        {streaming && <span className="blink" style={{ color:'var(--accent)' }}>▌</span>}
       </div>
     </div>
+  );
+}
+
+function Btn({ icon, label, onClick, dashed }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button onClick={onClick}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8,
+        border: dashed ? `1px dashed ${hover ? 'var(--accent)' : 'var(--border2)'}` : 'none',
+        background: hover && !dashed ? 'var(--surface2)' : 'transparent',
+        color: hover ? (dashed ? 'var(--accent)' : 'var(--soft)') : 'var(--muted)',
+        fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', width:'100%', textAlign:'left', transition:'all .13s' }}>
+      <span>{icon}</span>{label}
+    </button>
   );
 }
 
@@ -56,7 +68,6 @@ export default function Page() {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [stream, setStream] = useState('');
   const [sessions, setSessions] = useState([]);
   const [sid, setSid] = useState(null);
   const endRef = useRef(null);
@@ -67,7 +78,7 @@ export default function Page() {
     if (s) setSessions(JSON.parse(s));
   }, []);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs, stream]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs]);
 
   const resize = () => {
     const t = taRef.current;
@@ -79,11 +90,12 @@ export default function Page() {
   const send = async (text) => {
     const msg = (text ?? input).trim();
     if (!msg || busy) return;
-    setInput(''); if (taRef.current) taRef.current.style.height = 'auto';
+    setInput('');
+    if (taRef.current) taRef.current.style.height = 'auto';
 
     const history = [...msgs, { role:'user', content:msg }];
     setMsgs(history);
-    setBusy(true); setStream('');
+    setBusy(true);
 
     try {
       const res = await fetch('/api/chat', {
@@ -92,28 +104,12 @@ export default function Page() {
         body: JSON.stringify({ messages: history }),
       });
 
-      if (!res.ok) {
-        const e = await res.json();
-        throw new Error(e.error || 'Server error — check your CEREBRAS_API_KEY in Vercel settings');
-      }
+      const data = await res.json();
 
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let full = '';
+      if (data.error) throw new Error(data.error);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const lines = dec.decode(value, { stream:true }).split('\n').filter(l => l.startsWith('data: '));
-        for (const line of lines) {
-          const d = line.slice(6).trim();
-          if (d === '[DONE]') continue;
-          try { full += JSON.parse(d).choices?.[0]?.delta?.content || ''; setStream(full); } catch {}
-        }
-      }
-
-      const final = [...history, { role:'assistant', content:full }];
-      setMsgs(final); setStream('');
+      const final = [...history, { role:'assistant', content: data.content }];
+      setMsgs(final);
 
       const id = sid || Date.now().toString();
       if (!sid) setSid(id);
@@ -123,25 +119,17 @@ export default function Page() {
 
     } catch(e) {
       setMsgs(prev => [...prev, { role:'assistant', content:`⚠️ **${e.message}**` }]);
-      setStream('');
     }
     setBusy(false);
   };
 
-  const newChat = () => { setSid(null); setMsgs([]); setStream(''); };
-
-  const load = (s) => { setSid(s.id); setMsgs(s.messages); setStream(''); };
-
-  const S = (p) => ({ // style helper
-    sidebar: { background:'var(--surface)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', padding:'18px 13px', gap:5, overflow:'hidden', ...p },
-  });
+  const newChat = () => { setSid(null); setMsgs([]); };
+  const load = (s) => { setSid(s.id); setMsgs(s.messages); };
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'252px 1fr', height:'100vh' }}>
-
       {/* SIDEBAR */}
       <aside style={{ background:'var(--surface)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', padding:'18px 13px', gap:5, overflow:'hidden' }}>
-        {/* Logo */}
         <div style={{ display:'flex', alignItems:'center', gap:9, padding:'4px 9px 18px' }}>
           <div style={{ width:32, height:32, background:'linear-gradient(135deg,#5b8dee,#8bb4ff)', borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 0 16px var(--glow)', flexShrink:0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -150,7 +138,6 @@ export default function Page() {
         </div>
 
         <Btn icon="+" label="New conversation" onClick={newChat} dashed />
-
         <div style={{ fontSize:10.5, fontWeight:600, textTransform:'uppercase', letterSpacing:'.09em', color:'var(--muted)', padding:'6px 9px 3px' }}>History</div>
 
         <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:2 }}>
@@ -174,8 +161,6 @@ export default function Page() {
 
       {/* MAIN */}
       <main style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
-
-        {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'13px 24px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ width:7, height:7, background:'#3dd68c', borderRadius:'50%', boxShadow:'0 0 7px rgba(61,214,140,.7)', animation:'pulse 2.5s ease infinite' }}/>
@@ -184,9 +169,7 @@ export default function Page() {
           <span style={{ fontSize:12, color:'var(--muted)' }}>Axon AI</span>
         </div>
 
-        {/* Messages */}
         <div style={{ flex:1, overflowY:'auto', padding:'26px 26px 14px', display:'flex', flexDirection:'column', gap:3 }}>
-
           {msgs.length === 0 && !busy && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', gap:18, padding:'30px 20px', animation:'fadeUp .5s ease both' }}>
               <div style={{ width:64, height:64, background:'linear-gradient(135deg,#5b8dee,#8bb4ff)', borderRadius:17, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 0 36px rgba(91,141,238,.28)' }}>
@@ -215,11 +198,19 @@ export default function Page() {
           )}
 
           {msgs.map((m,i) => <Bubble key={i} role={m.role} content={m.content} />)}
-          {busy && <Bubble role="assistant" content={stream} streaming={true} />}
+
+          {busy && (
+            <div style={{ display:'flex', gap:10, padding:'4px 0' }}>
+              <div style={{ width:30, height:30, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, marginTop:3, background:'linear-gradient(135deg,#5b8dee,#8bb4ff)', color:'#fff', fontFamily:'Syne,sans-serif' }}>A</div>
+              <div style={{ padding:'14px 16px', borderRadius:14, background:'var(--surface)', border:'1px solid var(--border)', borderTopLeftRadius:3, display:'flex', gap:5, alignItems:'center' }}>
+                {[0,1,2].map(i => <div key={i} style={{ width:7, height:7, background:'var(--accent)', borderRadius:'50%', animation:`dot 1.2s ease-in-out ${i*.2}s infinite` }}/>)}
+              </div>
+            </div>
+          )}
+
           <div ref={endRef}/>
         </div>
 
-        {/* Input */}
         <div style={{ padding:'13px 24px 18px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
           <div style={{ background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:12, display:'flex', alignItems:'flex-end', padding:'3px 3px 3px 14px' }}>
             <textarea ref={taRef} value={input} rows={1} placeholder="Ask Axon anything…"
@@ -239,20 +230,5 @@ export default function Page() {
         </div>
       </main>
     </div>
-  );
-}
-
-function Btn({ icon, label, onClick, dashed }) {
-  const [hover, setHover] = useState(false);
-  return (
-    <button onClick={onClick}
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8,
-        border: dashed ? `1px dashed ${hover ? 'var(--accent)' : 'var(--border2)'}` : 'none',
-        background: hover && !dashed ? 'var(--surface2)' : 'transparent',
-        color: hover ? (dashed ? 'var(--accent)' : 'var(--soft)') : 'var(--muted)',
-        fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer', width:'100%', textAlign:'left', transition:'all .13s' }}>
-      <span style={{ fontSize:13 }}>{icon}</span>{label}
-    </button>
   );
 }
