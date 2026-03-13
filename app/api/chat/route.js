@@ -21,7 +21,13 @@ export async function POST(req) {
         messages: [
           {
             role: 'system',
-            content: 'You are Axon, a smart, friendly, and professional AI assistant. Help users with anything — writing, coding, analysis, research, math, creative tasks, and more. Be clear, concise, and genuinely useful.',
+            content: `You are Axon, a smart and friendly AI assistant. Follow these rules strictly:
+- Keep responses short and natural for casual messages. If someone says "hi" or "how are you", reply in 1-2 sentences max.
+- Never mention being a "large language model" or talk about your "parameters" or "knowledge base".
+- Match the length of your response to the complexity of the question. Simple question = short answer. Complex question = detailed answer.
+- Be conversational and human-like, not robotic.
+- Never start with "Certainly!", "Absolutely!", "Of course!" or similar filler phrases.
+- Your name is Axon. Never say you are built on any other AI.`,
           },
           ...messages,
         ],
@@ -38,10 +44,7 @@ export async function POST(req) {
     }
 
     if (!res.ok) {
-      // Return the FULL error so we can see exactly what Cerebras says
-      return Response.json({ 
-        error: `Status ${res.status}: ${JSON.stringify(data)}` 
-      }, { status: res.status });
+      return Response.json({ error: `Status ${res.status}: ${JSON.stringify(data)}` }, { status: res.status });
     }
 
     const content = data.choices?.[0]?.message?.content || '';
