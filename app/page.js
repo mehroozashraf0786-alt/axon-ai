@@ -39,7 +39,7 @@ function CopyBtn({ text, color }) {
   );
 }
 
-function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode, pinned, onPin }) {
+function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode, pinned, onPin, didSearch }) {
   const isAxon = role === 'assistant';
   const moodInfo = MOODS[mood] || MOODS.neutral;
   const parts = [];
@@ -94,7 +94,12 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
             style={{ background:'none', border:'none', cursor:'pointer', color:pinned?moodInfo.color:'var(--muted)', fontSize:12, padding:'4px 6px', borderRadius:6, transition:'color 0.2s' }}>
             {pinned?'📌':'📍'}
           </button>
-          {isAxon && responseTime && <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto', paddingRight:2 }}>{responseTime<1000?`${responseTime}ms`:`${(responseTime/1000).toFixed(1)}s`}</span>}
+          {isAxon && (
+              <span style={{ display:'flex', alignItems:'center', gap:6, marginLeft:'auto', paddingRight:2 }}>
+                {didSearch && <span style={{ fontSize:10, color:'var(--muted)', background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:5, padding:'1px 5px' }}>🌐 web</span>}
+                {responseTime && <span style={{ fontSize:11, color:'var(--muted)' }}>{responseTime<1000?`${responseTime}ms`:`${(responseTime/1000).toFixed(1)}s`}</span>}
+              </span>
+            )}
         </div>
       </div>
     </div>
@@ -415,7 +420,7 @@ export default function Page() {
         saveMemory(updated.slice(-50));
       }
 
-      const final=[...history,{role:'assistant',content:data.content,mood,responseTime:data.responseTime}];
+      const final=[...history,{role:'assistant',content:data.content,mood,responseTime:data.responseTime,didSearch:data.didSearch}];
       setMsgs(final); playNotif();
 
       const id=sid||Date.now().toString(); if(!sid) setSid(id);
@@ -581,7 +586,8 @@ export default function Page() {
             <Bubble key={i} role={m.role} content={m.content} mood={m.mood}
               responseTime={m.responseTime} onSpeak={(t)=>speak(t,i)}
               speaking={speakingIdx===i} darkMode={darkMode}
-              pinned={pinnedIdxs.includes(i)} onPin={()=>togglePin(i)} />
+              pinned={pinnedIdxs.includes(i)} onPin={()=>togglePin(i)}
+              didSearch={m.didSearch} />
           ))}
 
           {busy && (

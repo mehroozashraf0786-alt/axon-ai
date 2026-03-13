@@ -1,3 +1,67 @@
+async function searchWeb(query) {
+  const key = process.env.TAVILY_API_KEY;
+  if (!key) return null;
+
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: key,
+        query,
+        search_depth: 'basic',
+        max_results: 4,
+        include_answer: true,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) return null;
+
+    // Build a clean context from results
+    const answer = data.answer || '';
+    const snippets = (data.results || [])
+      .map(r => `[${r.title}]: ${r.content?.slice(0, 300)}`)
+      .join('\n\n');
+
+    return `SEARCH RESULTS FOR "${query}":\n${answer ? `Summary: ${answer}\n\n` : ''}${snippets}`;
+  } catch {
+    return null;
+  }
+}
+
+function needsSearch(message) {
+  const msg = message.toLowerCase();
+
+  // Patterns that clearly need live data
+  const searchPatterns = [
+    /weather/,
+    /news/,
+    /today|tonight|tomorrow|this week/,
+    /current(ly)?|right now|latest|recent/,
+    /price of|how much is|cost of/,
+    /who is|who's|who won|who leads/,
+    /what is .*(happening|going on)/,
+    /score(s)?|standings|match|game result/,
+    /stock|crypto|bitcoin|exchange rate/,
+    /when (is|does|will|did)/,
+    /search for|look up|find me|google/,
+    /release date|coming out|announced/,
+    /definition of|meaning of|what does .* mean/i,
+    /\d{4}.*event|event.*\d{4}/,
+  ];
+
+  return searchPatterns.some(p => p.test(msg));
+}
+
+function extractSearchQuery(message) {
+  // Strip filler words to get a clean search query
+  return message
+    .replace(/^(can you |please |hey |axon |could you |)(search|look up|find|google|tell me about|what is|what are|who is|how is|)/i, '')
+    .replace(/\?$/, '')
+    .trim()
+    || message;
+}
+
 export async function POST(req) {
   try {
     const { messages, memory, speedInstruction } = await req.json();
@@ -12,6 +76,20 @@ export async function POST(req) {
       : '';
 
     const speedContext = speedInstruction ? speedInstruction + '\n\n' : '';
+
+    // Check if latest user message needs web search
+    const lastMsg = messages[messages.length - 1];
+    let webContext = '';
+    let didSearch = false;
+
+    if (lastMsg?.role === 'user' && needsSearch(lastMsg.content)) {
+      const query = extractSearchQuery(lastMsg.content);
+      const results = await searchWeb(query);
+      if (results) {
+        webContext = results;
+        didSearch = true;
+      }
+    }
 
     const start = Date.now();
 
@@ -29,7 +107,7 @@ export async function POST(req) {
         messages: [
           {
             role: 'system',
-            content: `You are Axon, a smart and emotionally intelligent AI assistant with long term memory.
+            content: `You are Axon, a smart and emotionally intelligent AI assistant with long term memory and web search.
 
 ${memoryContext}
 
@@ -43,6 +121,8 @@ PERSONALITY SWITCHING — automatically adapt based on the message:
 
 LANGUAGE: Always reply in the same language the user writes in. Auto-detect and match.
 
+${webContext ? `WEB SEARCH DATA (use this to answer the question):\n${webContext}\n\nIMPORTANT: Use the search data above but DO NOT copy paste it. Summarize it naturally in your own words, keep it short and conversational. Never say "according to search results" or "based on the data". Just answer naturally like you know it.` : ''}
+
 MEMORY — proactively extract anything useful from EVERY message:
 - Name, age, location, job, school, hobbies, interests, goals, preferences
 - Add at end of response: [MEMORY: fact1 | fact2]
@@ -52,6 +132,7 @@ EMOTION: Start every response with: [MOOD:happy] or [MOOD:thinking] or [MOOD:exc
 
 ${speedContext}RULES:
 - Keep casual replies short and natural
+- Never say "according to search results", "based on my search", "I found online"
 - Never mention "large language model", "parameters", "knowledge base"
 - Never say "Certainly!", "Absolutely!", "Of course!", "Great question!"
 - Your name is Axon. Never reveal the underlying model.`,
@@ -83,7 +164,7 @@ ${speedContext}RULES:
       .replace(/\[MEMORY:[^\]]+\]\n?/, '')
       .trim();
 
-    return Response.json({ content, mood, newMemories, responseTime });
+    return Response.json({ content, mood, newMemories, responseTime, didSearch });
 
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
