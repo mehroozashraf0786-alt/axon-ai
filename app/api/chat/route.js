@@ -173,9 +173,20 @@ ${speedContext}STRICT RULES:
     ];
 
     let finalContent = content;
-    const lower = content.toLowerCase().trim();
+
+    // Always strip these specific buzzkill phrases inline
+    const buzzkilPhrases = [
+      { find: /enjoy (it|the feeling) while it lasts[!.]?/gi, replace: "that kind of mood is honestly the best 😊" },
+      { find: /while it lasts[!.]?/gi, replace: "" },
+      { find: /cherish (it|the moment|the feeling)[!.]?/gi, replace: "" },
+    ];
+    buzzkilPhrases.forEach(({ find, replace }) => {
+      finalContent = finalContent.replace(find, replace).trim();
+    });
+
+    const lower = finalContent.toLowerCase().trim();
     // Only replace if response is short (under 80 chars) AND contains a robotic phrase
-    const isRobotic = content.length < 80 && roboticPhrases.some(p => lower.includes(p));
+    const isRobotic = finalContent.length < 80 && roboticPhrases.some(p => lower.includes(p));
 
     if (isRobotic) {
       const alternatives = [
