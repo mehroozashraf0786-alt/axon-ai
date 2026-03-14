@@ -293,6 +293,10 @@ export default function Page() {
     const ac = localStorage.getItem('axon_accent'); if(ac) setAccentColorState(ac);
     const ts = localStorage.getItem('axon_speed'); if(ts) setTypingSpeedState(ts);
     try { notifRef.current = new (window.AudioContext||window.webkitAudioContext)(); } catch {}
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
   }, []);
 
   const setDarkMode = (v) => { setDarkModeState(v); localStorage.setItem('axon_dark', v); };
