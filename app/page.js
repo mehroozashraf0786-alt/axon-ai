@@ -52,13 +52,14 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
   }
   if (last < content.length) parts.push({ t:'text', v:content.slice(last) });
 
-  const renderText = (s) => {
+  const renderText = (s, isDark) => {
+    const textColor = isDark ? '#e6eaf5' : '#1a1d2e';
     const html = s
       .replace(/`([^`]+)`/g, `<code style="font-family:monospace;font-size:13px;color:${moodInfo.color};background:${moodInfo.color}22;padding:1px 6px;border-radius:4px">$1</code>`)
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
       .replace(/\*(.+?)\*/g,'<em>$1</em>')
       .replace(/\n/g,'<br/>');
-    return <span dangerouslySetInnerHTML={{ __html: html }} />;
+    return <span style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
   return (
@@ -78,7 +79,7 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
 {parts.map((p,i) =>
             p.t==='code'
               ? <pre key={i} style={{ background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:8, padding:'12px 14px', overflowX:'auto', margin:'8px 0', fontSize:12, fontFamily:"'Fira Code',monospace" }}><code style={{ color:'var(--soft)' }}>{p.v}</code></pre>
-              : <span key={i}>{renderText(p.v)}</span>
+              : <span key={i}>{renderText(p.v, darkMode)}</span>
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:4, paddingLeft:4 }}>

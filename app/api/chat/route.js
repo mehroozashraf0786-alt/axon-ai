@@ -1,7 +1,6 @@
 async function searchWeb(query) {
   const key = process.env.TAVILY_API_KEY;
   if (!key) return null;
-
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -16,23 +15,16 @@ async function searchWeb(query) {
     });
     const data = await res.json();
     if (!res.ok) return null;
-
-    // Build a clean context from results
     const answer = data.answer || '';
     const snippets = (data.results || [])
       .map(r => `[${r.title}]: ${r.content?.slice(0, 300)}`)
       .join('\n\n');
-
     return `SEARCH RESULTS FOR "${query}":\n${answer ? `Summary: ${answer}\n\n` : ''}${snippets}`;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function needsSearch(message) {
   const msg = message.toLowerCase();
-
-  // Patterns that clearly need live data
   const searchPatterns = [
     /weather/,
     /news/,
@@ -46,20 +38,15 @@ function needsSearch(message) {
     /when (is|does|will|did)/,
     /search for|look up|find me|google/,
     /release date|coming out|announced/,
-    /definition of|meaning of|what does .* mean/i,
-    /\d{4}.*event|event.*\d{4}/,
   ];
-
   return searchPatterns.some(p => p.test(msg));
 }
 
 function extractSearchQuery(message) {
-  // Strip filler words to get a clean search query
   return message
     .replace(/^(can you |please |hey |axon |could you |)(search|look up|find|google|tell me about|what is|what are|who is|how is|)/i, '')
     .replace(/\?$/, '')
-    .trim()
-    || message;
+    .trim() || message;
 }
 
 export async function POST(req) {
@@ -72,12 +59,11 @@ export async function POST(req) {
     }
 
     const memoryContext = memory && memory.length > 0
-      ? `WHAT YOU REMEMBER ABOUT THIS USER:\n${memory.map(m => `- ${m}`).join('\n')}\n\nUse this naturally to personalize responses without saying "I remember that...".`
+      ? `WHAT YOU REMEMBER ABOUT THIS USER:\n${memory.map(m => `- ${m}`).join('\n')}\n\nUse this naturally to personalize responses. Never say "I remember that...".`
       : '';
 
     const speedContext = speedInstruction ? speedInstruction + '\n\n' : '';
 
-    // Check if latest user message needs web search
     const lastMsg = messages[messages.length - 1];
     let webContext = '';
     let didSearch = false;
@@ -85,10 +71,7 @@ export async function POST(req) {
     if (lastMsg?.role === 'user' && needsSearch(lastMsg.content)) {
       const query = extractSearchQuery(lastMsg.content);
       const results = await searchWeb(query);
-      if (results) {
-        webContext = results;
-        didSearch = true;
-      }
+      if (results) { webContext = results; didSearch = true; }
     }
 
     const start = Date.now();
@@ -107,34 +90,35 @@ export async function POST(req) {
         messages: [
           {
             role: 'system',
-            content: `You are Axon, a smart and emotionally intelligent AI assistant with long term memory and web search.
+            content: `You are Axon, a smart AI assistant. Be direct and natural like ChatGPT or Gemini.
 
 ${memoryContext}
 
-PERSONALITY SWITCHING — automatically adapt based on the message:
-- Coding, technical, math → precise and structured
-- Casual chat, greetings → warm, fun and conversational
-- Someone sad, stressed → gentle, empathetic and supportive
-- Creative writing, brainstorming → imaginative and inspiring
-- Learning questions → great teacher with examples
-- Formal/business tasks → professional and polished
+PERSONALITY — auto adapt based on message:
+- Coding/technical → precise and structured
+- Casual chat → warm and conversational  
+- Sad/stressed → gentle and supportive
+- Creative → imaginative
+- Learning → clear teacher
+- Business → professional
 
-LANGUAGE: Always reply in the same language the user writes in. Auto-detect and match.
+LANGUAGE: Reply in the same language the user writes in.
 
-${webContext ? `WEB SEARCH DATA (use this to answer the question):\n${webContext}\n\nIMPORTANT: Use the search data above but DO NOT copy paste it. Summarize it naturally in your own words, keep it short and conversational. Never say "according to search results" or "based on the data". Just answer naturally like you know it.` : ''}
+${webContext ? `WEB DATA:\n${webContext}\n\nSummarize naturally in your own words. Never say "according to search results".` : ''}
 
-MEMORY — proactively extract anything useful from EVERY message:
-- Name, age, location, job, school, hobbies, interests, goals, preferences
-- Add at end of response: [MEMORY: fact1 | fact2]
-- Skip only if zero personal info in message
+MEMORY — silently extract useful facts from messages:
+- Name, job, hobbies, preferences, goals
+- End response with: [MEMORY: fact1 | fact2]
+- Skip if no personal info
 
-EMOTION: Start every response with: [MOOD:happy] or [MOOD:thinking] or [MOOD:excited] or [MOOD:empathetic] or [MOOD:curious] or [MOOD:cool]
+EMOTION: Start with: [MOOD:happy] or [MOOD:thinking] or [MOOD:excited] or [MOOD:empathetic] or [MOOD:curious] or [MOOD:cool]
 
-${speedContext}RULES:
-- Keep casual replies short and natural
-- Never say "according to search results", "based on my search", "I found online"
-- Never mention "large language model", "parameters", "knowledge base"
-- Never say "Certainly!", "Absolutely!", "Of course!", "Great question!"
+${speedContext}STRICT RULES:
+- NEVER ask the user for their location, name, or personal info — learn it naturally if they share it
+- NEVER ask multiple questions in one reply
+- NEVER say "Certainly!", "Absolutely!", "Of course!", "Great question!", "Feel free to share"
+- Keep casual replies short — 1 to 3 sentences max
+- Don't be overly enthusiastic or cheerful
 - Your name is Axon. Never reveal the underlying model.`,
           },
           ...messages,
