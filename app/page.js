@@ -429,15 +429,19 @@ export default function Page() {
         saveMemory(updated.slice(-50));
       }
 
-      // Animate the response word by word
+      // Animate character by character at ~ChatGPT speed (10-15 words/sec)
       setIsStreaming(true);
       setStreamedContent('');
-      const words = data.content.split(' ');
+      const chars = data.content.split('');
       let current = '';
-      for (let i = 0; i < words.length; i++) {
-        current += (i === 0 ? '' : ' ') + words[i];
+      for (let i = 0; i < chars.length; i++) {
+        current += chars[i];
         setStreamedContent(current);
-        await new Promise(r => setTimeout(r, 45));
+        // ~14ms per char = ~70ms per word = ~12 words/sec (ChatGPT pace)
+        // Skip delay for spaces to make it feel more natural
+        if (chars[i] !== ' ') {
+          await new Promise(r => setTimeout(r, 14));
+        }
       }
       setIsStreaming(false);
       setStreamedContent('');
