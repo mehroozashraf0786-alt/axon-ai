@@ -170,6 +170,8 @@ ${speedContext}STRICT RULES:
       "how can i assist you",
       "i'm ready to help",
       "here to help you",
+      "enjoy it while it lasts",
+      "while it lasts",
     ];
 
     let finalContent = content;
