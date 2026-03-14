@@ -161,7 +161,33 @@ ${speedContext}STRICT RULES:
       .replace(/MEMORY:.*$/gm, '')
       .trim();
 
-    return Response.json({ content, mood, newMemories, responseTime, didSearch });
+    // Hard filter — replace known robotic responses
+    const roboticPhrases = [
+      "just here and ready to help",
+      "i'm just an ai",
+      "i don't have feelings",
+      "i'm here to assist",
+      "how can i assist you",
+      "i'm ready to help",
+      "here to help you",
+    ];
+
+    let finalContent = content;
+    const lower = content.toLowerCase();
+    const isRobotic = roboticPhrases.some(p => lower.includes(p));
+
+    if (isRobotic) {
+      const alternatives = [
+        "pretty good actually! enjoying the conversation 😄 what else is on your mind?",
+        "all good on my end! honestly just vibing here. you?",
+        "doing well! this has been a fun chat. what's next?",
+        "not bad at all! glad we're talking. what's up?",
+        "good! honestly enjoying this. what else is going on with you?",
+      ];
+      finalContent = alternatives[Math.floor(Math.random() * alternatives.length)];
+    }
+
+    return Response.json({ content: finalContent, mood, newMemories, responseTime, didSearch });
 
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
