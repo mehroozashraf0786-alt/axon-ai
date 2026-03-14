@@ -161,7 +161,7 @@ ${speedContext}STRICT RULES:
       .replace(/MEMORY:.*$/gm, '')
       .trim();
 
-    // Hard filter — replace known robotic responses
+    // Hard filter — only replace if the ENTIRE response is a robotic phrase (short replies)
     const roboticPhrases = [
       "just here and ready to help",
       "i'm just an ai",
@@ -170,21 +170,20 @@ ${speedContext}STRICT RULES:
       "how can i assist you",
       "i'm ready to help",
       "here to help you",
-      "enjoy it while it lasts",
-      "while it lasts",
     ];
 
     let finalContent = content;
-    const lower = content.toLowerCase();
-    const isRobotic = roboticPhrases.some(p => lower.includes(p));
+    const lower = content.toLowerCase().trim();
+    // Only replace if response is short (under 80 chars) AND contains a robotic phrase
+    const isRobotic = content.length < 80 && roboticPhrases.some(p => lower.includes(p));
 
     if (isRobotic) {
       const alternatives = [
         "pretty good actually! enjoying the conversation 😄 what else is on your mind?",
-        "all good on my end! honestly just vibing here. you?",
-        "doing well! this has been a fun chat. what's next?",
-        "not bad at all! glad we're talking. what's up?",
-        "good! honestly enjoying this. what else is going on with you?",
+        "all good on my end! honestly just vibing. you?",
+        "doing well! this has been a good chat. what's on your mind?",
+        "not bad! glad we're talking. what else is going on?",
+        "good honestly! what else is up with you?",
       ];
       finalContent = alternatives[Math.floor(Math.random() * alternatives.length)];
     }
