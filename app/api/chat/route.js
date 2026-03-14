@@ -190,11 +190,11 @@ ${speedContext}STRICT RULES:
 
     if (isRobotic) {
       const alternatives = [
-        "pretty good actually! enjoying the conversation 😄 what else is on your mind?",
-        "all good on my end! honestly just vibing. you?",
-        "doing well! this has been a good chat. what's on your mind?",
-        "not bad! glad we're talking. what else is going on?",
-        "good honestly! what else is up with you?",
+        "pretty good on my end! enjoying the chat honestly 😄 what else is going on with you?",
+        "all good! this has been a nice conversation. what else is on your mind?",
+        "doing well actually! glad we're talking. what's next on your mind?",
+        "pretty good! loving the vibe of this chat. what else is up?",
+        "good! honestly been a fun one. what else you got? 😄",
       ];
       finalContent = alternatives[Math.floor(Math.random() * alternatives.length)];
     }
