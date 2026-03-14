@@ -437,7 +437,7 @@ export default function Page() {
       for (let i = 0; i < words.length; i++) {
         current += (i === 0 ? '' : ' ') + words[i];
         setStreamedContent(current);
-        await new Promise(r => setTimeout(r, 18));
+        await new Promise(r => setTimeout(r, 45));
       }
       setIsStreaming(false);
       setStreamedContent('');
