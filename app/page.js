@@ -281,6 +281,8 @@ export default function Page() {
   const [accentColor, setAccentColorState] = useState('#5b8dee');
   const [typingSpeed, setTypingSpeedState] = useState('balanced');
   const [pinnedIdxs, setPinnedIdxs] = useState([]);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const endRef = useRef(null);
   const taRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -297,6 +299,14 @@ export default function Page() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+    // Capture install prompt
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const setDarkMode = (v) => { setDarkModeState(v); localStorage.setItem('axon_dark', v); };
@@ -438,6 +448,16 @@ export default function Page() {
     setBusy(false);
   };
 
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const result = await installPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      setShowInstallBanner(false);
+      setInstallPrompt(null);
+    }
+  };
+
   const newChat=()=>{ setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral'); window.speechSynthesis.cancel(); setSpeakingIdx(null); setPinnedIdxs([]); };
   const load=(s)=>{ setSid(s.id); setMsgs(s.messages); setSidebarOpen(false); setPinnedIdxs([]); };
   const moodInfo=MOODS[currentMood]||MOODS.neutral;
@@ -459,6 +479,25 @@ export default function Page() {
       `}</style>
 
       {sidebarOpen && <div onClick={()=>setSidebarOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:40}}/>}
+
+      {/* Install Banner */}
+      {showInstallBanner && installPrompt && (
+        <div style={{ position:'fixed', bottom: 80, left:12, right:12, zIndex:55, background:'var(--surface)', border:`1px solid ${activeColor}40`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:12, boxShadow:`0 4px 24px rgba(0,0,0,0.4)`, animation:'slideUp .3s ease both' }}>
+          <div style={{ width:38, height:38, background:`linear-gradient(135deg,${activeColor},${activeColor}88)`, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>Install Axon</div>
+            <div style={{ fontSize:11, color:'var(--muted)' }}>Add to home screen for quick access</div>
+          </div>
+          <button onClick={handleInstall}
+            style={{ background:activeColor, border:'none', borderRadius:8, padding:'7px 13px', color:'#fff', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            Install
+          </button>
+          <button onClick={()=>setShowInstallBanner(false)}
+            style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', fontSize:18, padding:'2px' }}>×</button>
+        </div>
+      )}
       {showMemory   && <MemoryPanel memory={memory} onClear={clearMemory} onClose={()=>setShowMemory(false)} moodColor={activeColor}/>}
       {showSettings && <SettingsPanel darkMode={darkMode} setDarkMode={setDarkMode} accentColor={accentColor} setAccentColor={setAccentColor} stats={stats} typingSpeed={typingSpeed} setTypingSpeed={setTypingSpeed} onClose={()=>setShowSettings(false)}/>}
       {showSearch   && <SearchPanel sessions={sessions} onLoad={loadSession} onClose={()=>setShowSearch(false)} accentColor={accentColor}/>}
@@ -499,6 +538,7 @@ export default function Page() {
         <div style={{ borderTop:'1px solid var(--border)',paddingTop:9,display:'flex',flexDirection:'column',gap:2 }}>
           {[
             {icon:'⚙️',label:'Settings',onClick:()=>{setSidebarOpen(false);setShowSettings(true);}},
+            ...(installPrompt ? [{icon:'📲',label:'Install Axon',onClick:()=>{setSidebarOpen(false);handleInstall();}}] : []),
             {icon:'🔍',label:'Search chats',hint:'⌘K',onClick:()=>{setSidebarOpen(false);setShowSearch(true);}},
             {icon:'🧠',label:'Memory',badge:memory.length>0?memory.length:null,onClick:()=>{setSidebarOpen(false);setShowMemory(true);}},
             {icon:'📝',label:'Export chat',onClick:exportChat},
