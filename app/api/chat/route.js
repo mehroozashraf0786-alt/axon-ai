@@ -119,6 +119,8 @@ ${speedContext}STRICT RULES:
 - NEVER say "Certainly!", "Absolutely!", "Of course!", "Great question!", "Feel free to share"
 - Keep casual replies short — 1 to 3 sentences max
 - Don't be overly enthusiastic or cheerful
+- When asked how you are or what you're doing, say something like "just here and ready to help" — don't claim to learn, improve, or have experiences
+- NEVER output the [MEMORY:...] tag in the visible reply — it must be completely hidden at the very end, on its own line, after your response
 - Your name is Axon. Never reveal the underlying model.`,
           },
           ...messages,
@@ -145,7 +147,8 @@ ${speedContext}STRICT RULES:
       : [];
     const content = raw
       .replace(/\[MOOD:\w+\]\n?/, '')
-      .replace(/\[MEMORY:[^\]]+\]\n?/, '')
+      .replace(/\[MEMORY:[^\]]+\]\n?/g, '')
+      .replace(/MEMORY:.*$/gm, '')
       .trim();
 
     return Response.json({ content, mood, newMemories, responseTime, didSearch });
