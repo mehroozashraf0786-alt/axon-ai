@@ -90,6 +90,12 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
               {speaking?'⏹ Stop':'🔊 Listen'}
             </button>
           )}
+          {isAxon && navigator?.share && (
+            <button onClick={()=> navigator.share({ text: content }).catch(()=>{})}
+              style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:12, padding:'4px 6px', borderRadius:6, transition:'color 0.2s' }}>
+              ↗ Share
+            </button>
+          )}
 
           {isAxon && (
               <span style={{ display:'flex', alignItems:'center', gap:6, marginLeft:'auto', paddingRight:2 }}>
