@@ -462,6 +462,8 @@ export default function Page() {
   const load=(s)=>{ setSid(s.id); setMsgs(s.messages); setSidebarOpen(false); setPinnedIdxs([]); };
   const moodInfo=MOODS[currentMood]||MOODS.neutral;
   const activeColor=moodInfo.color;
+  // When user picks white accent, use blue instead so text stays visible on light bg
+  const safeAccent = accentColor === '#e4e8f5' ? '#5b8dee' : accentColor;
 
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', position:'relative', ...theme }}>
@@ -513,7 +515,7 @@ export default function Page() {
             <div style={{ width:32,height:32,background:`linear-gradient(135deg,${activeColor},${activeColor}88)`,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'background 0.5s ease' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </div>
-            <span style={{ fontFamily:'Syne,sans-serif',fontSize:19,fontWeight:800,letterSpacing:'-0.4px',color:'var(--text)' }}>Ax<span style={{ color:activeColor,transition:'color 0.5s ease' }}>on</span></span>
+            <span style={{ fontFamily:'Syne,sans-serif',fontSize:19,fontWeight:800,letterSpacing:'-0.4px',color:'var(--text)' }}>Ax<span style={{ color: activeColor === '#e4e8f5' ? (darkMode ? '#e4e8f5' : '#5b8dee') : activeColor,transition:'color 0.5s ease' }}>on</span></span>
           </div>
           <button onClick={()=>setSidebarOpen(false)} style={{ background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:20,padding:'2px 6px' }}>×</button>
         </div>
@@ -594,7 +596,7 @@ export default function Page() {
               </div>
               <div>
                 <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,letterSpacing:'-0.5px',marginBottom:8,color:'var(--text)' }}>
-                  Meet <span style={{ color:activeColor }}>Axon</span>
+                  Meet <span style={{ color:activeColor === '#e4e8f5' ? '#5b8dee' : activeColor }}>Axon</span>
                 </h1>
                 <p style={{ fontSize:14,color:'var(--soft)',maxWidth:300,lineHeight:1.7 }}>
                   Your AI assistant with memory, voice, themes, search and more.
