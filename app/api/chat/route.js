@@ -23,7 +23,13 @@ async function searchWeb(query) {
   } catch { return null; }
 }
 
+function isEmotional(message) {
+  const msg = message.toLowerCase();
+  return /frustrated|stressed|anxious|sad|happy|excited|tired|overwhelmed|angry|upset|lonely|scared|worried|nervous|depressed|feeling|mood|emotion/.test(msg);
+}
+
 function needsSearch(message) {
+  if (isEmotional(message)) return false;
   const msg = message.toLowerCase();
   const searchPatterns = [
     /weather/,
