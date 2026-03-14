@@ -272,6 +272,8 @@ export default function Page() {
   const [showMemory, setShowMemory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [streamedContent, setStreamedContent] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState(null);
   const [listening, setListening] = useState(false);
   const [darkMode, setDarkModeState] = useState(true);
@@ -427,6 +429,19 @@ export default function Page() {
         saveMemory(updated.slice(-50));
       }
 
+      // Animate the response word by word
+      setIsStreaming(true);
+      setStreamedContent('');
+      const words = data.content.split(' ');
+      let current = '';
+      for (let i = 0; i < words.length; i++) {
+        current += (i === 0 ? '' : ' ') + words[i];
+        setStreamedContent(current);
+        await new Promise(r => setTimeout(r, 18));
+      }
+      setIsStreaming(false);
+      setStreamedContent('');
+
       const final=[...history,{role:'assistant',content:data.content,mood,responseTime:data.responseTime,didSearch:data.didSearch}];
       setMsgs(final); playNotif();
 
@@ -451,7 +466,7 @@ export default function Page() {
     }
   };
 
-  const newChat=()=>{ setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral'); window.speechSynthesis.cancel(); setSpeakingIdx(null); };
+  const newChat=()=>{ setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral'); window.speechSynthesis.cancel(); setSpeakingIdx(null); setIsStreaming(false); setStreamedContent(''); };
   const load=(s)=>{ setSid(s.id); setMsgs(s.messages); setSidebarOpen(false); };
   const moodInfo=MOODS[currentMood]||MOODS.neutral;
   const activeColor=moodInfo.color;
@@ -469,6 +484,7 @@ export default function Page() {
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
         @keyframes dot{0%,80%,100%{transform:scale(.6);opacity:.3}40%{transform:scale(1);opacity:1}}
         @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
+        @keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
         textarea::placeholder{color:var(--muted)}
         input::placeholder{color:var(--muted)}
         ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -617,12 +633,24 @@ export default function Page() {
               didSearch={m.didSearch} />
           ))}
 
-          {busy && (
+          {busy && !isStreaming && (
             <div style={{ display:'flex',gap:10,padding:'4px 0' }}>
               <div style={{ width:28,height:28,borderRadius:7,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,marginTop:3,
                 background:`linear-gradient(135deg,${activeColor},${activeColor}88)`,color:'#fff',fontFamily:'Syne,sans-serif' }}>A</div>
               <div style={{ padding:'12px 14px',borderRadius:13,background:'var(--surface)',border:'1px solid var(--border)',borderTopLeftRadius:3,display:'flex',gap:5,alignItems:'center' }}>
                 {[0,1,2].map(i=><div key={i} style={{ width:6,height:6,background:activeColor,borderRadius:'50%',animation:`dot 1.2s ease-in-out ${i*.2}s infinite` }}/>)}
+              </div>
+            </div>
+          )}
+          {/* Streaming animation bubble */}
+          {isStreaming && streamedContent && (
+            <div style={{ display:'flex', gap:10, padding:'4px 0', animation:'fadeUp .25s ease both' }}>
+              <div style={{ width:28, height:28, borderRadius:7, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, marginTop:3,
+                background:`linear-gradient(135deg,${activeColor},${activeColor}88)`, color:'#fff', fontFamily:'Syne,sans-serif' }}>A</div>
+              <div style={{ maxWidth:'85%', padding:'11px 14px', borderRadius:13, fontSize:14.5, lineHeight:1.78, color:'var(--text)',
+                background:'var(--surface)', border:`1px solid ${activeColor}25`, borderTopLeftRadius:3 }}>
+                {streamedContent}
+                <span style={{ display:'inline-block', width:2, height:14, background:activeColor, marginLeft:2, borderRadius:1, animation:'cursorBlink .6s ease infinite', verticalAlign:'middle' }}/>
               </div>
             </div>
           )}
