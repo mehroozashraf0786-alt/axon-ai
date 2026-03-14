@@ -469,7 +469,7 @@ export default function Page() {
         display:'flex',flexDirection:'column',padding:'18px 13px',gap:5,overflow:'hidden',
         transform:sidebarOpen?'translateX(0)':'translateX(-100%)',transition:'transform 0.25s ease' }}>
 
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 9px 18px',paddingTop:'calc(4px + env(safe-area-inset-top))' }}>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 9px 18px' }}>
           <div style={{ display:'flex',alignItems:'center',gap:9 }}>
             <div style={{ width:32,height:32,background:`linear-gradient(135deg,${activeColor},${activeColor}88)`,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'background 0.5s ease' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -517,7 +517,7 @@ export default function Page() {
 
       {/* MAIN */}
       <main style={{ flex:1,display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',background:'var(--bg)' }}>
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',paddingTop:'calc(12px + env(safe-area-inset-top))',borderBottom:'1px solid var(--border)',flexShrink:0,background:'var(--bg)' }}>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid var(--border)',flexShrink:0,background:'var(--bg)' }}>
           <div style={{ display:'flex',alignItems:'center',gap:10 }}>
             <button onClick={()=>setSidebarOpen(true)}
               style={{ background:'none',border:'none',cursor:'pointer',color:'var(--soft)',padding:'4px',display:'flex',flexDirection:'column',gap:4 }}>
@@ -606,7 +606,7 @@ export default function Page() {
           <div ref={endRef}/>
         </div>
 
-        <div style={{ padding:'10px 14px',paddingBottom:'calc(16px + env(safe-area-inset-bottom))',borderTop:'1px solid var(--border)',flexShrink:0,background:'var(--bg)' }}>
+        <div style={{ padding:'10px 14px 16px',borderTop:'1px solid var(--border)',flexShrink:0,background:'var(--bg)' }}>
           <div style={{ background:'var(--surface)',border:`1px solid ${activeColor}35`,borderRadius:12,display:'flex',alignItems:'flex-end',padding:'3px 3px 3px 13px',transition:'border-color 0.5s ease' }}>
             <button onClick={toggleVoice}
               style={{ width:32,height:32,borderRadius:8,background:listening?'rgba(239,68,68,0.15)':'none',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:listening?'#ef4444':'var(--muted)',flexShrink:0,marginRight:4,animation:listening?'micPulse 1.5s ease infinite':'none' }}>
