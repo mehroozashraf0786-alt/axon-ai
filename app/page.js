@@ -39,7 +39,7 @@ function CopyBtn({ text, color }) {
   );
 }
 
-function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode, pinned, onPin, didSearch }) {
+function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode, didSearch }) {
   const isAxon = role === 'assistant';
   const moodInfo = MOODS[mood] || MOODS.neutral;
   const parts = [];
@@ -54,7 +54,7 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
 
   const renderText = (s) => {
     const html = s
-      .replace(/`([^`]+)`/g, `<code style="font-family:monospace;font-size:13px;color:${moodInfo.color};background:${moodInfo.color}18;padding:1px 6px;border-radius:4px">$1</code>`)
+      .replace(/`([^`]+)`/g, `<code style="font-family:monospace;font-size:13px;color:${moodInfo.color};background:${moodInfo.color}22;padding:1px 6px;border-radius:4px">$1</code>`)
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
       .replace(/\*(.+?)\*/g,'<em>$1</em>')
       .replace(/\n/g,'<br/>');
@@ -63,7 +63,7 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
 
   return (
     <div style={{ display:'flex', gap:10, padding:'4px 0', flexDirection:isAxon?'row':'row-reverse', animation:'fadeUp .25s ease both',
-      ...(pinned ? { background: moodInfo.color+'10', borderRadius:12, padding:'8px', margin:'2px 0' } : {}) }}>
+      }}>
       <div style={{ width:28, height:28, borderRadius:7, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, marginTop:3,
         ...(isAxon
           ? { background:`linear-gradient(135deg,${moodInfo.color},${moodInfo.color}88)`, color:'#fff', fontFamily:'Syne,sans-serif', boxShadow:`0 0 10px ${moodInfo.color}40`, transition:'background 0.5s ease' }
@@ -73,12 +73,11 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
       <div style={{ maxWidth:'85%', display:'flex', flexDirection:'column', gap:4 }}>
         <div style={{ padding:'11px 14px', borderRadius:13, fontSize:14.5, lineHeight:1.78,
           ...(isAxon
-            ? { background:'var(--surface)', border:`1px solid ${pinned ? moodInfo.color+'60' : moodInfo.color+'25'}`, borderTopLeftRadius:3, transition:'border-color 0.5s ease' }
-            : { background:'var(--user)', border:'1px solid rgba(91,141,238,0.18)', borderTopRightRadius:3 }) }}>
-          {pinned && <div style={{ fontSize:10, color:moodInfo.color, fontWeight:700, marginBottom:6, letterSpacing:'.06em' }}>📌 PINNED</div>}
-          {parts.map((p,i) =>
+            ? { background:'var(--surface)', border:`1px solid ${moodInfo.color}25`, borderTopLeftRadius:3, transition:'border-color 0.5s ease' }
+            : { background:'var(--user)', border:'1px solid var(--border2)', borderTopRightRadius:3 }) }}>
+{parts.map((p,i) =>
             p.t==='code'
-              ? <pre key={i} style={{ background:darkMode?'#0d1117':'#f1f3f8', border:'1px solid var(--border2)', borderRadius:8, padding:'12px 14px', overflowX:'auto', margin:'8px 0', fontSize:12, fontFamily:"'Fira Code',monospace" }}><code style={{ color:darkMode?'#c9d1d9':'#24292e' }}>{p.v}</code></pre>
+              ? <pre key={i} style={{ background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:8, padding:'12px 14px', overflowX:'auto', margin:'8px 0', fontSize:12, fontFamily:"'Fira Code',monospace" }}><code style={{ color:'var(--soft)' }}>{p.v}</code></pre>
               : <span key={i}>{renderText(p.v)}</span>
           )}
         </div>
@@ -90,10 +89,7 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
               {speaking?'⏹ Stop':'🔊 Listen'}
             </button>
           )}
-          <button onClick={onPin}
-            style={{ background:'none', border:'none', cursor:'pointer', color:pinned?moodInfo.color:'var(--muted)', fontSize:12, padding:'4px 6px', borderRadius:6, transition:'color 0.2s' }}>
-            {pinned?'📌':'📍'}
-          </button>
+
           {isAxon && (
               <span style={{ display:'flex', alignItems:'center', gap:6, marginLeft:'auto', paddingRight:2 }}>
                 {didSearch && <span style={{ fontSize:10, color:'var(--muted)', background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:5, padding:'1px 5px' }}>🌐 web</span>}
@@ -280,7 +276,6 @@ export default function Page() {
   const [darkMode, setDarkModeState] = useState(true);
   const [accentColor, setAccentColorState] = useState('#5b8dee');
   const [typingSpeed, setTypingSpeedState] = useState('balanced');
-  const [pinnedIdxs, setPinnedIdxs] = useState([]);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const endRef = useRef(null);
@@ -385,9 +380,6 @@ export default function Page() {
     a.download='axon-chat.txt'; a.click();
   };
 
-  const togglePin = (idx) => {
-    setPinnedIdxs(prev => prev.includes(idx) ? prev.filter(i=>i!==idx) : [...prev, idx]);
-  };
 
   const resize=()=>{ const t=taRef.current; if(!t) return; t.style.height='auto'; t.style.height=Math.min(t.scrollHeight,120)+'px'; };
   const saveMemory=(m)=>{ setMemory(m); localStorage.setItem('axon_memory',JSON.stringify(m)); };
@@ -458,15 +450,16 @@ export default function Page() {
     }
   };
 
-  const newChat=()=>{ setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral'); window.speechSynthesis.cancel(); setSpeakingIdx(null); setPinnedIdxs([]); };
-  const load=(s)=>{ setSid(s.id); setMsgs(s.messages); setSidebarOpen(false); setPinnedIdxs([]); };
+  const newChat=()=>{ setSid(null); setMsgs([]); setSidebarOpen(false); setCurrentMood('neutral'); window.speechSynthesis.cancel(); setSpeakingIdx(null); };
+  const load=(s)=>{ setSid(s.id); setMsgs(s.messages); setSidebarOpen(false); };
   const moodInfo=MOODS[currentMood]||MOODS.neutral;
   const activeColor=moodInfo.color;
   // When user picks white accent, use blue instead so text stays visible on light bg
   const safeAccent = accentColor === '#e4e8f5' ? '#5b8dee' : accentColor;
 
   return (
-    <div style={{ display:'flex', height:'100vh', overflow:'hidden', position:'relative', ...theme }}>
+    <div style={{ display:'flex', height:'100vh', overflow:'hidden', position:'relative', ...theme, backgroundColor:'var(--bg)' }}
+      ref={el => { if(el) document.body.style.background = darkMode ? '#09090f' : '#f4f6fb'; }}>
       <style>{`
         *{box-sizing:border-box}
         body{background:var(--bg)!important}
@@ -616,23 +609,10 @@ export default function Page() {
             </div>
           )}
 
-          {/* Pinned messages bar */}
-          {pinnedIdxs.length > 0 && (
-            <div style={{ background:activeColor+'12',border:`1px solid ${activeColor}30`,borderRadius:10,padding:'8px 12px',marginBottom:4 }}>
-              <div style={{ fontSize:11,color:activeColor,fontWeight:600,marginBottom:4 }}>📌 {pinnedIdxs.length} pinned message{pinnedIdxs.length>1?'s':''}</div>
-              {pinnedIdxs.map(idx => msgs[idx] && (
-                <div key={idx} style={{ fontSize:12,color:'var(--soft)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
-                  {msgs[idx].role==='user'?'You':'Axon'}: {msgs[idx].content.slice(0,60)}{msgs[idx].content.length>60?'…':''}
-                </div>
-              ))}
-            </div>
-          )}
-
           {msgs.map((m,i)=>(
             <Bubble key={i} role={m.role} content={m.content} mood={m.mood}
               responseTime={m.responseTime} onSpeak={(t)=>speak(t,i)}
               speaking={speakingIdx===i} darkMode={darkMode}
-              pinned={pinnedIdxs.includes(i)} onPin={()=>togglePin(i)}
               didSearch={m.didSearch} />
           ))}
 

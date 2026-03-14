@@ -10,7 +10,6 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Fill the status bar area with the app background */
 body {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
@@ -21,3 +20,7 @@ body {
 #__next, #__next > div {
   height: 100%;
 }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: #2a2a3d; border-radius: 3px; }
