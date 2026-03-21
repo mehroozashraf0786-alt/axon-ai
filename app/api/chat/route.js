@@ -139,7 +139,7 @@ RULES:
 - NEVER say "enjoy it while it lasts" — that's a buzzkill
 - Never give one paragraph answers to big topics — use sections and bullets`,
           },
-          ...messages,
+          ...messages.map(m => ({ role: m.role, content: m.content })),
         ],
       }),
     });
