@@ -659,7 +659,7 @@ export default function Page() {
                 background:`linear-gradient(135deg,${activeColor},${activeColor}88)`, color:'#fff', fontFamily:'Syne,sans-serif' }}>A</div>
               <div style={{ maxWidth:'85%', padding:'11px 14px', borderRadius:13, fontSize:14.5, lineHeight:1.78, color:'var(--text)',
                 background:'var(--surface)', border:`1px solid ${activeColor}25`, borderTopLeftRadius:3 }}>
-                <span style={{ color: darkMode ? '#e6eaf5' : '#1a1d2e' }}>{streamedContent}</span>
+                <span style={{ color: darkMode ? '#e6eaf5' : '#1a1d2e' }}>{streamedContent.replace(/#{1,4} /g, '').replace(/^[-*+] /gm, '• ').replace(/\*\*/g, '').replace(/\*/g, '')}</span>
                 <span style={{ display:'inline-block', width:2, height:14, background:activeColor, marginLeft:2, borderRadius:1, animation:'cursorBlink .6s ease infinite', verticalAlign:'middle' }}/>
               </div>
             </div>
