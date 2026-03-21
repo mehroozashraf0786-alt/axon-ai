@@ -52,14 +52,73 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
   }
   if (last < content.length) parts.push({ t:'text', v:content.slice(last) });
 
-  const renderText = (s, isDark) => {
-    const textColor = isDark ? '#e6eaf5' : '#1a1d2e';
-    const html = s
-      .replace(/`([^`]+)`/g, `<code style="font-family:monospace;font-size:13px;color:${moodInfo.color};background:${moodInfo.color}22;padding:1px 6px;border-radius:4px">$1</code>`)
-      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g,'<em>$1</em>')
-      .replace(/\n/g,'<br/>');
-    return <span style={{ color: textColor }} dangerouslySetInnerHTML={{ __html: html }} />;
+  const renderInline = (text) => {
+    const textColor = darkMode ? '#e6eaf5' : '#1a1d2e';
+    const parts = [];
+    const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    let last = 0, m;
+    while ((m = regex.exec(text)) !== null) {
+      if (m.index > last) parts.push(<span key={last} style={{color:textColor}}>{text.slice(last, m.index)}</span>);
+      const token = m[0];
+      if (token.startsWith('`'))
+        parts.push(<code key={m.index} style={{fontFamily:'monospace',fontSize:13,color:moodInfo.color,background:moodInfo.color+'22',padding:'1px 6px',borderRadius:4}}>{token.slice(1,-1)}</code>);
+      else if (token.startsWith('**'))
+        parts.push(<strong key={m.index} style={{color:textColor,fontWeight:700}}>{token.slice(2,-2)}</strong>);
+      else if (token.startsWith('*'))
+        parts.push(<em key={m.index} style={{color:textColor}}>{token.slice(1,-1)}</em>);
+      last = m.index + token.length;
+    }
+    if (last < text.length) parts.push(<span key={last} style={{color:textColor}}>{text.slice(last)}</span>);
+    return parts.length > 0 ? parts : [<span key={0} style={{color:textColor}}>{text}</span>];
+  };
+
+  const renderMarkdown = (text) => {
+    const textColor = darkMode ? '#e6eaf5' : '#1a1d2e';
+    const mutedColor = darkMode ? '#8690b0' : '#5a6080';
+    const lines = text.split('\n');
+    const elements = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (line.startsWith('#### ')) {
+        elements.push(<div key={i} style={{fontSize:14,fontWeight:700,color:textColor,margin:'8px 0 2px'}}>{renderInline(line.slice(5))}</div>);
+      } else if (line.startsWith('### ')) {
+        elements.push(<div key={i} style={{fontSize:15,fontWeight:700,color:textColor,margin:'10px 0 4px'}}>{renderInline(line.slice(4))}</div>);
+      } else if (line.startsWith('## ')) {
+        elements.push(<div key={i} style={{fontSize:16,fontWeight:800,color:textColor,margin:'12px 0 4px'}}>{renderInline(line.slice(3))}</div>);
+      } else if (line.startsWith('# ')) {
+        elements.push(<div key={i} style={{fontSize:18,fontWeight:800,color:textColor,margin:'14px 0 6px'}}>{renderInline(line.slice(2))}</div>);
+      } else if (line.match(/^\s*[-*+] /)) {
+        const items = [];
+        while (i < lines.length && lines[i].match(/^\s*[-*+] /)) {
+          const indent = (lines[i].match(/^(\s*)/)||['',''])[1].length;
+          const txt = lines[i].replace(/^\s*[-*+] /, '');
+          items.push(<li key={i} style={{marginBottom:4,paddingLeft:indent>0?12:4,listStyleType:indent>0?'circle':'disc',color:textColor}}>{renderInline(txt)}</li>);
+          i++;
+        }
+        elements.push(<ul key={'ul'+i} style={{paddingLeft:18,margin:'6px 0'}}>{items}</ul>);
+        continue;
+      } else if (line.match(/^\d+\. /)) {
+        const items = [];
+        while (i < lines.length && lines[i].match(/^\d+\. /)) {
+          const txt = lines[i].replace(/^\d+\. /, '');
+          items.push(<li key={i} style={{marginBottom:4,paddingLeft:4,color:textColor}}>{renderInline(txt)}</li>);
+          i++;
+        }
+        elements.push(<ol key={'ol'+i} style={{paddingLeft:20,margin:'6px 0'}}>{items}</ol>);
+        continue;
+      } else if (line.match(/^---+$/)) {
+        elements.push(<hr key={i} style={{border:'none',borderTop:`1px solid ${moodInfo.color}30`,margin:'10px 0'}}/>);
+      } else if (line.startsWith('> ')) {
+        elements.push(<div key={i} style={{borderLeft:`3px solid ${moodInfo.color}`,paddingLeft:12,margin:'6px 0',color:mutedColor,fontStyle:'italic'}}>{renderInline(line.slice(2))}</div>);
+      } else if (line.trim() === '') {
+        elements.push(<div key={i} style={{height:6}}/>);
+      } else {
+        elements.push(<div key={i} style={{color:textColor,marginBottom:2}}>{renderInline(line)}</div>);
+      }
+      i++;
+    }
+    return <>{elements}</>;
   };
 
   return (
@@ -79,7 +138,7 @@ function Bubble({ role, content, mood, responseTime, onSpeak, speaking, darkMode
 {parts.map((p,i) =>
             p.t==='code'
               ? <pre key={i} style={{ background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:8, padding:'12px 14px', overflowX:'auto', margin:'8px 0', fontSize:12, fontFamily:"'Fira Code',monospace" }}><code style={{ color:'var(--soft)' }}>{p.v}</code></pre>
-              : <span key={i}>{renderText(p.v, darkMode)}</span>
+              : <div key={i}>{renderMarkdown(p.v)}</div>
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:4, paddingLeft:4 }}>
